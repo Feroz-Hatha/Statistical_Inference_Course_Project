@@ -1,0 +1,155 @@
+---
+title: "Analysis of the 'ToothGrowth' dataset"
+author: "Feroz Mohamed Hatha"
+date: "22/09/2020"
+output: pdf_document
+---
+
+```{r setup, include = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview #
+
+The `ToothGrowth` dataset consists of the length of the teeth recorded for 10 Guinea pigs each of whom take 3 doses (0.5 mg, 1 mg, and 2 mg) of 2 Vitamin C supplements (Orange juice and Ascorbic acid). Thus, there are a total of 60 observations (rows) and 3 variables (columns). 
+The 3 variables are:
+
+* len: Tooth length (numerical) 
+* supp: Vitamin C supplement ("OJ" or "VC") (factor) 
+* dose: Dosage in mg (0.5, 1, or 2) (numerical)
+
+```{r message=FALSE, warning=FALSE}
+# Load the required packages
+library(datasets)
+library(ggplot2)
+library(dplyr)
+```
+
+## 1. Loading the data + basic exploratory data analyses ##
+
+```{r message=FALSE, warning=FALSE}
+# Load the ToothGrowth dataset 
+data("ToothGrowth")
+
+# Look at the structure of the data
+str(ToothGrowth)
+
+# Look at the first few rows of the data
+head(ToothGrowth)
+
+# Plot tooth length as a function of dosage and supplement
+ggplot(ToothGrowth, aes(x = dose, y = len)) + geom_point(aes(color = supp)) + 
+  labs(title = "Tooth length as a function of supplement and dosage", 
+       x = "Dosage of Vitamin C (mg/day)", y = "Tooth length") + 
+  theme(plot.title = element_text(hjust = 0.5)) + labs(color = "Supplement")
+
+# Make a boxplot of tooth length as a function of dosage for each supplement
+ggplot(ToothGrowth, aes(factor(dose), len, fill = factor(dose))) +
+      geom_boxplot() +
+      facet_grid(.~supp, labeller = as_labeller(
+            c("OJ" = "Orange juice", 
+              "VC" = "Ascorbic acid"))) +
+      labs(title = "Boxplot of tooth length v/s supplement and dosage",
+           x = "Dosage of Vitamin C (mg/day)", 
+           y = "Tooth length") +
+      scale_fill_discrete(name = "Dosage of\nVitamin C\n(mg/day)") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## 2. Provide a basic summary of the data ##
+
+```{r message = FALSE, warning = FALSE}
+# Look at the summary for each of the three variables
+summary(ToothGrowth)
+
+# Get the summary for each Vitamin C supplement
+ToothGrowth %>%
+  group_by(supp) %>%
+  summarize(mean_len = mean(len), sd_len = sd(len), count = n()) %>%
+  print()
+
+# Get the summary for each dosage
+ToothGrowth %>%
+  group_by(dose) %>%
+  summarize(mean_len = mean(len), sd_len = sd(len), count = n()) %>%
+  print()
+
+# For each value pair of supplement and dosage, get the summary
+ToothGrowth %>%
+  group_by(supp, dose) %>%
+  summarize(mean_len = mean(len), sd_len = sd(len), count = n()) %>%
+  print()
+```
+
+From the above summaries, it seems like tooth length is directly proportional to the dosage of the Vitamin C supplement. It also looks like Orange juice is the better supplement of the two as the mean tooth length is higher in the case of Orange juice. 
+
+## 3. Use confidence intervals and/or hypothesis tests to compare tooth growth by supplement and dosage ##
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two supplements by using a paired t-test
+supp1 <- subset(ToothGrowth, ToothGrowth$supp == "VC")
+supp2 <- subset(ToothGrowth, ToothGrowth$supp == "OJ")
+t.test(supp1$len, supp2$len, paired = TRUE)
+```
+We reject the null hypothesis as the 95% confidence interval does not contain 0. Therefore, we conclude that the two supplements differ in terms of how they affect tooth growth. 
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two dosages 0.5 mg and 1 mg for Ascorbic acid using a paired t-test
+supp_1_low <- subset(ToothGrowth, ToothGrowth$supp == "VC" & ToothGrowth$dose == 0.5)
+supp_1_mid <- subset(ToothGrowth, ToothGrowth$supp == "VC" & ToothGrowth$dose == 1)
+t.test(supp_1_low$len, supp_1_mid$len, paired = TRUE)
+```
+
+Once again, we reject the null hypothesis as the 95% confidence interval does not contain 0. We conclude that the two dosages of Ascorbic acid (0.5 mg and 1 mg) differ in terms of how they affect tooth growth.
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two dosages 1 mg and 2 mg for Ascorbic acid using a paired t-test
+supp_1_high <- subset(ToothGrowth, ToothGrowth$supp == "VC" & ToothGrowth$dose == 2)
+t.test(supp_1_mid$len, supp_1_high$len, paired = TRUE)
+```
+
+We reject the null hypothesis yet again as the 95% confidence interval does not contain 0. We conclude that the two dosages of Ascorbic acid (1 mg and 2 mg) differ in terms of how they affect tooth growth.
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two dosages 0.5 mg and 2 mg for Ascorbic acid using a paired t-test
+t.test(supp_1_low$len, supp_1_high$len, paired = TRUE)
+```
+
+As expected, we get a very low p-value (and a 95% confidence interval that does not contain 0) and therefore we conclude that the two dosages of Ascorbic acid (0.5 mg and 2 mg) very clearly differ in terms of how they affect tooth growth.
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two dosages 0.5 mg and 1 mg for Orange juice using a paired t-test
+supp_2_low <- subset(ToothGrowth, ToothGrowth$supp == "OJ" & ToothGrowth$dose == 0.5)
+supp_2_mid <- subset(ToothGrowth, ToothGrowth$supp == "OJ" & ToothGrowth$dose == 1)
+t.test(supp_2_low$len, supp_2_mid$len, paired = TRUE)
+```
+
+As the 95% confidence interval does not contain 0, we conclude that the two dosages of Orange juice (0.5 mg and 1 mg) differ in terms of how they affect tooth growth.
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two dosages 1 mg and 2 mg for Orange juice using a paired t-test
+supp_2_high <- subset(ToothGrowth, ToothGrowth$supp == "OJ" & ToothGrowth$dose == 2)
+t.test(supp_2_mid$len, supp_2_high$len, paired = TRUE)
+```
+
+Surprisingly, for the first time, our 95% confidence interval contains 0. Also, our p-value is greater than 0.05. Therefore, we fail to reject the null hypothesis and conclude that the dosages 1 mg and 2 mg of Orange juice do not lead to substantial difference in tooth growth.
+
+```{r message = FALSE, warning = FALSE}
+# Compare the two dosages 0.5 mg and 2 mg for Orange juice using a paired t-test
+t.test(supp_2_low$len, supp_2_high$len, paired = TRUE)
+```
+
+As was the case with Ascorbic acid, with a very small p-value, we reject the null hypothesis. We conclude that the two dosages of Orange juice (0.5 mg and 2 mg) very clearly differ in terms of how they affect tooth growth.
+
+## Assumptions and conclusions ##
+
+* Every single t-test was carried out by considering the groups to be paired.
+* As the groups were assumed to be paired, we obviously assume equal variances for the groups.
+* We assume that the observations are independent and that they are drawn from the same population distribution.
+* We conclude that for each supplement, the tooth length generally increases with increase in dosage of the supplement.
+* We conclude that the two supplements differ in terms of how they affect tooth growth. We also conclude that Orange juice is the better supplement of the two as the mean tooth length is higher in the case of Orange juice.
+* Surprisingly, we conclude that the dosages 1 mg and 2 mg of Orange juice do not lead to substantial difference in tooth growth.
+
+
+
+
